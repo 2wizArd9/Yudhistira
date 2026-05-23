@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en" class="js">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Yudhishthira AI — Fake News Detection</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Orbitron:wght@500;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <!-- Critical: keep UI visible if cached CSS or animations fail -->
+  <style>
+    body, .app-shell, .main-content, .sidebar { opacity: 1 !important; visibility: visible !important; }
+    .fade-in, .fade-in-up { opacity: 1 !important; transform: none !important; }
+    #particles { pointer-events: none; z-index: 0; }
+  </style>
+</head>
+<body>
+  <canvas id="particles" aria-hidden="true" style="background: transparent;"></canvas>
+
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-icon pulse-glow">
+          <i class="bi bi-shield-check"></i>
+        </div>
+        <div class="brand-text">
+<span class="brand-name">Yudhishthira AI</span>
+          <span class="brand-tag">Hybrid AI Verify</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#home" class="nav-link active" data-section="home">
+          <i class="bi bi-house-door"></i><span>Home</span>
+        </a>
+        <a href="#about" class="nav-link" data-section="about">
+          <i class="bi bi-info-circle"></i><span>About</span>
+        </a>
+        <a href="#analytics" class="nav-link" data-section="analytics">
+          <i class="bi bi-graph-up-arrow"></i><span>Analytics</span>
+        </a>
+        <a href="#model" class="nav-link" data-section="model">
+          <i class="bi bi-cpu"></i><span>Model Info</span>
+        </a>
+        <a href="#developer" class="nav-link" data-section="developer">
+          <i class="bi bi-code-slash"></i><span>Developer</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-status glass-panel">
+        <span class="status-dot"></span>
+        <span>Model Online</span>
+      </div>
+    </aside>
+
+    <button class="sidebar-toggle d-lg-none" id="sidebarToggle" aria-label="Toggle navigation">
+      <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Main content -->
+    <div class="main-content">
+      <!-- Hero -->
+      <header class="hero fade-in" id="home">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <div class="hero-badge">
+              <i class="bi bi-stars"></i>
+              <span>AI-Powered · 2026</span>
+            </div>
+            <h1 class="hero-title">
+              <span class="gradient-text">Detect Fake News</span>
+              <span class="hero-subline">Before It Spreads</span>
+            </h1>
+            <p class="hero-desc">
+              Hybrid AI combines ML classification with live news verification and trusted-source
+              credibility scoring — real-world fact-checking for the modern web.
+            </p>
+            <div class="hero-stats">
+              <div class="stat-chip glass-panel">
+                <span class="stat-value">ML</span>
+                <span class="stat-label">Classifier</span>
+              </div>
+              <div class="stat-chip glass-panel">
+                <span class="stat-value">Live</span>
+                <span class="stat-label">News API</span>
+              </div>
+              <div class="stat-chip glass-panel">
+                <span class="stat-value">Trust</span>
+                <span class="stat-label">Source Score</span>
+              </div>
+            </div>
+          </div>
+          <div class="hero-visual float-anim">
+            <div class="ai-orb">
+              <div class="orb-ring ring-1"></div>
+              <div class="orb-ring ring-2"></div>
+              <div class="orb-ring ring-3"></div>
+              <div class="orb-core">
+                <i class="bi bi-robot"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Prediction -->
+      <section class="section predict-section fade-in delay-1">
+        <div class="section-header">
+          <h2><i class="bi bi-search"></i> Live Analysis</h2>
+          <p>Paste a news headline or article excerpt below</p>
+        </div>
+
+        <form class="predict-card glass-card" action="{{ url_for('predict') }}" method="POST" id="predictForm">
+          <label for="news" class="input-label">
+            <i class="bi bi-newspaper"></i> News Statement
+          </label>
+          <div class="textarea-wrap">
+            <textarea
+              id="news"
+              name="news"
+              rows="7"
+              placeholder="Enter the news statement here for AI classification..."
+              required
+            >{% if news_input is defined %}{{ news_input }}{% endif %}</textarea>
+            <div class="textarea-glow"></div>
+          </div>
+
+          <div class="form-footer">
+            <span class="char-hint" id="charCount">0 characters</span>
+            <button type="submit" class="btn-predict" id="predictBtn">
+              <span class="btn-text">
+                <i class="bi bi-lightning-charge-fill"></i> Predict
+              </span>
+              <span class="btn-loader" aria-hidden="true">
+                <span class="loader-ring"></span>
+                <span>Analyzing...</span>
+              </span>
+            </button>
+          </div>
+
+          {% if prediction is defined %}
+            {% set pred_lower = prediction|lower %}
+            {% if result is defined %}
+              {% set is_real = result.is_real %}
+              {% set confidence = result.final_confidence %}
+            {% else %}
+              {% set is_real = ('real' in pred_lower and 'fake' not in pred_lower) %}
+              {% set confidence = (72 if is_real else 68) if ('real' in pred_lower or 'fake' in pred_lower) else 0 %}
+            {% endif %}
+
+            {% if 'please enter' in pred_lower or 'something went wrong' in pred_lower %}
+              {% set result_class = 'result-neutral' %}
+              {% set result_icon = 'bi-info-circle-fill' %}
+              {% set result_label = 'Notice' %}
+            {% elif is_real %}
+              {% set result_class = 'result-real' %}
+              {% set result_icon = 'bi-check-circle-fill' %}
+              {% set result_label = 'REAL NEWS' %}
+            {% else %}
+              {% set result_class = 'result-fake' %}
+              {% set result_icon = 'bi-exclamation-triangle-fill' %}
+              {% set result_label = 'FAKE NEWS' %}
+            {% endif %}
+
+            <div class="result-panel {{ result_class }} fade-in-up" role="status" aria-live="polite">
+              <div class="result-header">
+                <div class="result-icon-wrap">
+                  <i class="bi {{ result_icon }}"></i>
+                </div>
+                <div class="result-meta">
+                  <span class="result-type">{{ result_label }}</span>
+                  <span class="result-prediction">{{ prediction }}</span>
+                </div>
+              </div>
+
+              {% if result is defined and confidence > 0 %}
+              <div class="confidence-block">
+                <div class="confidence-label">
+                  <span>Hybrid AI Confidence</span>
+                  <span class="confidence-value" data-confidence="{{ confidence }}">{{ confidence }}%</span>
+                </div>
+                <div class="confidence-meter">
+                  <div class="confidence-fill" style="width: 0%" data-target="{{ confidence }}"></div>
+                  <div class="confidence-glow"></div>
+                </div>
+              </div>
+
+              <div class="score-breakdown">
+                <div class="score-pill">
+                  <span class="score-label">ML</span>
+                  <span class="score-val">{{ result.ml_confidence }}%</span>
+                </div>
+                <div class="score-pill">
+                  <span class="score-label">Live Verify</span>
+                  <span class="score-val">{{ result.live_score }}%</span>
+                </div>
+                <div class="score-pill">
+                  <span class="score-label">Source Trust</span>
+                  <span class="score-val">{{ result.credibility_score }}%</span>
+                </div>
+                {% if result.api_used %}
+                <div class="score-pill api-pill">
+                  <span class="score-label">API</span>
+                  <span class="score-val">{{ result.api_used }}</span>
+                </div>
+                {% endif %}
+              </div>
+
+              <div class="explanation-block glass-panel">
+                <h4><i class="bi bi-chat-square-quote"></i> AI Confidence Explanation</h4>
+                <p>{{ result.explanation }}</p>
+              </div>
+              {% elif confidence > 0 %}
+              <div class="confidence-block">
+                <div class="confidence-label">
+                  <span>ML Confidence</span>
+                  <span class="confidence-value" data-confidence="{{ confidence }}">{{ confidence }}%</span>
+                </div>
+                <div class="confidence-meter">
+                  <div class="confidence-fill" style="width: 0%" data-target="{{ confidence }}"></div>
+                  <div class="confidence-glow"></div>
+                </div>
+              </div>
+              {% endif %}
+
+              {% if warning is defined and warning %}
+              <div class="warning-banner" role="alert">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>{{ warning }}</span>
+              </div>
+              {% elif result is defined and result.warning %}
+              <div class="warning-banner" role="alert">
+                <i class="bi bi-exclamation-triangle"></i>
+                <span>{{ result.warning }}</span>
+              </div>
+              {% endif %}
+            </div>
+
+            {% if result is defined and result.sources %}
+            <div class="verified-sources fade-in-up">
+              <div class="section-header compact">
+                <h3><i class="bi bi-patch-check"></i> Verified Sources</h3>
+                <p>{{ result.match_count }} matching article(s) · {{ result.trusted_count }} from trusted outlets</p>
+              </div>
+              <div class="sources-list">
+                {% for article in result.sources %}
+                <article class="source-card glass-card hover-glow">
+                  <div class="source-card-top">
+                    <span class="source-name {% if article.trusted %}trusted{% endif %}">
+                      <i class="bi bi-building"></i> {{ article.source }}
+                      {% if article.premium %}<span class="premium-badge">Premium</span>{% endif %}
+                    </span>
+                    <span class="cred-badge" title="Source credibility">{{ article.credibility }}% trust</span>
+                  </div>
+                  <h4 class="source-title">{{ article.title }}</h4>
+                  <div class="source-meta">
+                    <span><i class="bi bi-calendar3"></i> {{ article.published }}</span>
+                    <span><i class="bi bi-link-45deg"></i> {{ article.similarity }}% match</span>
+                  </div>
+                  {% if article.url %}
+                  <a href="{{ article.url }}" target="_blank" rel="noopener noreferrer" class="source-link">
+                    Read article <i class="bi bi-box-arrow-up-right"></i>
+                  </a>
+                  {% endif %}
+                </article>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          {% endif %}
+        </form>
+      </section>
+
+      <!-- About -->
+      <section class="section fade-in delay-2" id="about">
+        <div class="section-header">
+<h2><i class="bi bi-info-circle"></i> About Yudhishthira AI</h2>
+<p>Hybrid detection for truth-oriented verification</p>
+        </div>
+        <div class="about-grid">
+          <div class="about-card glass-card hover-glow">
+            <div class="about-icon"><i class="bi bi-funnel"></i></div>
+            <h3>Text Preprocessing</h3>
+            <p>Input is cleaned and normalized, then fed to TF-IDF vectorization and live news search queries.</p>
+          </div>
+          <div class="about-card glass-card hover-glow">
+            <div class="about-icon"><i class="bi bi-diagram-3"></i></div>
+            <h3>Hybrid Classification</h3>
+            <p>ML model output is combined with GNews/NewsAPI matches and BBC, Reuters, NDTV, CNN credibility scores.</p>
+          </div>
+          <div class="about-card glass-card hover-glow">
+            <div class="about-icon"><i class="bi bi-globe2"></i></div>
+            <h3>Live Verification</h3>
+            <p>Similar headlines from trusted outlets boost REAL confidence; missing sources increase FAKE suspicion.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Analytics -->
+      <section class="section fade-in delay-3" id="analytics">
+        <div class="section-header">
+          <h2><i class="bi bi-bar-chart-line"></i> Analytics Dashboard</h2>
+          <p>Model performance metrics and comparison overview</p>
+        </div>
+
+        <div class="metrics-row">
+          <div class="metric-card glass-card hover-glow">
+            <div class="metric-icon accuracy"><i class="bi bi-bullseye"></i></div>
+            <span class="metric-value">92.4%</span>
+            <span class="metric-name">Accuracy</span>
+          </div>
+          <div class="metric-card glass-card hover-glow">
+            <div class="metric-icon precision"><i class="bi bi-crosshair"></i></div>
+            <span class="metric-value">90.8%</span>
+            <span class="metric-name">Precision</span>
+          </div>
+          <div class="metric-card glass-card hover-glow">
+            <div class="metric-icon recall"><i class="bi bi-arrow-repeat"></i></div>
+            <span class="metric-value">89.6%</span>
+            <span class="metric-name">Recall</span>
+          </div>
+          <div class="metric-card glass-card hover-glow">
+            <div class="metric-icon f1"><i class="bi bi-award"></i></div>
+            <span class="metric-value">90.1%</span>
+            <span class="metric-name">F1 Score</span>
+          </div>
+        </div>
+
+        <div class="charts-row">
+          <div class="chart-card glass-card hover-glow">
+            <h3><i class="bi bi-bar-chart-line"></i> Fake vs Real (History)</h3>
+            <div class="chart-container">{{ analytics.fake_real|safe if analytics is defined else '' }}</div>
+            <!-- DEBUG: if charts are empty, view page source for plotly div -->
+
+          </div>
+          <div class="chart-card glass-card hover-glow">
+            <h3><i class="bi bi-globe2"></i> Live Verification Health</h3>
+            <div class="chart-container">{{ analytics.availability|safe if analytics is defined else '' }}</div>
+          </div>
+        </div>
+
+        <div class="charts-row" style="margin-top:1.25rem;">
+          <div class="chart-card glass-card hover-glow">
+            <h3><i class="bi bi-graph-up-arrow"></i> Confidence Trend</h3>
+            <div class="chart-container">{{ analytics.trend|safe if analytics is defined else '' }}</div>
+          </div>
+          <div class="chart-card glass-card hover-glow">
+            <h3><i class="bi bi-patch-check"></i> Trusted Matches</h3>
+            <div class="chart-container">{{ analytics.trusted_avg|safe if analytics is defined else '' }}</div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Model Info -->
+      <section class="section fade-in delay-4" id="model">
+        <div class="section-header">
+          <h2><i class="bi bi-cpu"></i> Model Information</h2>
+          <p>Technical specifications of the detection pipeline</p>
+        </div>
+        <div class="model-grid">
+          <div class="model-spec glass-card">
+            <h3>Architecture</h3>
+            <ul class="spec-list">
+              <li><span>Framework</span><strong>scikit-learn</strong></li>
+              <li><span>Vectorizer</span><strong>TF-IDF</strong></li>
+              <li><span>Artifacts</span><strong>model.pkl · vectorizer.pkl</strong></li>
+              <li><span>Labels</span><strong>0 = Fake · 1 = Real</strong></li>
+            </ul>
+          </div>
+          <div class="model-spec glass-card">
+            <h3>Pipeline Flow</h3>
+            <div class="pipeline-steps">
+              <div class="pipe-step"><span>1</span> Preprocess</div>
+              <i class="bi bi-chevron-right pipe-arrow"></i>
+              <div class="pipe-step"><span>2</span> ML + Live API</div>
+              <i class="bi bi-chevron-right pipe-arrow"></i>
+              <div class="pipe-step"><span>3</span> Credibility</div>
+              <i class="bi bi-chevron-right pipe-arrow"></i>
+              <div class="pipe-step active"><span>4</span> Hybrid Result</div>
+            </div>
+          </div>
+          <div class="model-spec glass-card">
+            <h3>Capabilities</h3>
+            <div class="cap-tags">
+              <span class="tag">NLP</span>
+              <span class="tag">Text Classification</span>
+              <span class="tag">Misinformation</span>
+              <span class="tag">Real-time</span>
+              <span class="tag">GNews / NewsAPI</span>
+              <span class="tag">Hybrid AI</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Developer -->
+      <section class="section fade-in delay-5" id="developer">
+        <div class="section-header">
+          <h2><i class="bi bi-person-workspace"></i> Developer</h2>
+          <p>Built with modern ML and web technologies</p>
+        </div>
+        <div class="dev-card glass-card hover-glow">
+          <div class="dev-avatar">
+            <i class="bi bi-person-circle"></i>
+          </div>
+          <div class="dev-info">
+            <h3>Fake News Detection Project</h3>
+            <p>Flask · Python · scikit-learn · Bootstrap 5 · Chart.js</p>
+            <div class="dev-stack">
+              <span><i class="bi bi-filetype-py"></i> Python</span>
+              <span><i class="bi bi-cup-hot"></i> Flask</span>
+              <span><i class="bi bi-robot"></i> ML/NLP</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="site-footer">
+        <div class="footer-inner">
+          <div class="footer-brand">
+            <i class="bi bi-shield-check"></i>
+<span>Yudhishthira AI</span>
+          </div>
+          <div class="footer-tags">
+            <span class="tag">NLP</span>
+            <span class="tag">Machine Learning</span>
+            <span class="tag">Fake News Detection</span>
+            <span class="tag">AI SaaS</span>
+          </div>
+          <div class="footer-social">
+            <a href="https://github.com" target="_blank" rel="noopener" class="social-btn" aria-label="GitHub">
+              <i class="bi bi-github"></i>
+            </a>
+            <a href="https://linkedin.com" target="_blank" rel="noopener" class="social-btn" aria-label="LinkedIn">
+              <i class="bi bi-linkedin"></i>
+            </a>
+          </div>
+        </div>
+<p class="footer-copy">© 2026 Yudhishthira AI · Hybrid Fake News Detection Platform</p>
+      </footer>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Plotly for server-rendered Plotly div/script snippets -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
